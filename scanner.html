@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Options Scanner Engine | Alexis Kaiser</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',sans-serif;background:#0a0f1a;color:#e0e6f0;min-height:100vh;}
+  header{background:linear-gradient(135deg,#0d1a2e,#0f3460);padding:28px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #e94560;flex-wrap:wrap;gap:10px;}
+  header h1{font-size:1.6rem;font-weight:700;color:#e0e6f0;letter-spacing:1px;}
+  header h1 span{color:#e94560;}
+  header a{color:#89b4fa;text-decoration:none;font-size:.9rem;}
+  header a:hover{color:#e94560;}
+  .subtitle{background:#16213e;color:#a0b0c8;text-align:center;padding:8px;font-size:.82rem;letter-spacing:.5px;border-bottom:1px solid #1e3a5f;}
+  .container{max-width:820px;margin:36px auto;padding:0 16px 60px;}
+  .card{background:#111827;border:1px solid #1e3a5f;border-radius:14px;padding:30px;margin-bottom:24px;}
+  .card h2{font-size:1rem;color:#89b4fa;margin-bottom:22px;letter-spacing:1px;text-transform:uppercase;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  @media(max-width:560px){.form-grid{grid-template-columns:1fr;}}
+  .field label{display:block;font-size:.8rem;color:#8a9ab5;margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase;}
+  .field input,.field select{width:100%;background:#0d1520;border:1px solid #2a3f5f;border-radius:8px;padding:10px 14px;color:#e0e6f0;font-size:.95rem;outline:none;transition:border-color .2s;}
+  .field input:focus,.field select:focus{border-color:#89b4fa;}
+  .radio-group{display:flex;gap:12px;margin-top:4px;}
+  .radio-group label{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.9rem;color:#c0cfe0;background:#0d1520;border:1px solid #2a3f5f;border-radius:8px;padding:8px 16px;transition:all .2s;}
+  .radio-group label:hover{border-color:#89b4fa;}
+  .radio-group input[type=radio]{accent-color:#e94560;}
+  .radio-group label.selected{border-color:#e94560;background:#1a0a10;color:#e94560;}
+  .slider-row{display:flex;align-items:center;gap:12px;}
+  .slider-row input[type=range]{flex:1;accent-color:#e94560;}
+  .slider-val{color:#e94560;font-weight:700;min-width:40px;text-align:right;}
+  .btn{width:100%;padding:14px;background:#e94560;color:#fff;border:none;border-radius:10px;font-size:1.05rem;font-weight:700;cursor:pointer;letter-spacing:1px;transition:background .2s,transform .1s;margin-top:8px;}
+  .btn:hover{background:#c73450;transform:translateY(-1px);}
+  .btn:disabled{background:#444;cursor:not-allowed;transform:none;}
+  #status{text-align:center;padding:14px;border-radius:10px;font-size:.9rem;display:none;margin-top:16px;}
+  #status.scanning{background:#0d1a30;border:1px solid #1e3a5f;color:#89b4fa;display:block;}
+  #status.error{background:#2a0a0a;border:1px solid #991b1b;color:#f87171;display:block;}
+  #status.success{background:#0a2a1a;border:1px solid #166534;color:#4ade80;display:block;}
+  table{width:100%;border-collapse:collapse;font-size:.88rem;}
+  th{background:#0f3460;color:#89b4fa;padding:10px 12px;text-align:center;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+  td{padding:10px 12px;text-align:center;border-bottom:1px solid #1a2a40;}
+  tr:hover td{background:#0d1a30;}
+  .highlight{color:#e94560;font-weight:700;}
+  .highlight-g{color:#4ade80;font-weight:700;}
+  #results-section{display:none;}
+  .spot-price{text-align:center;color:#a0b0c8;font-size:.85rem;margin-bottom:14px;}
+  .spot-price span{color:#e0e6f0;font-weight:600;}
+</style>
+</head>
+<body>
+<header>
+  <h1>&#x1F4CA; Options <span>Scanner</span> Engine</h1>
+  <a href="index.html">&#8592; Back to Tools</a>
+</header>
+<div class="subtitle">Delta target: 0.35-0.40 for Calls &nbsp;|&nbsp; -0.40 to -0.35 for Puts &nbsp;|&nbsp; Gamma: nearest 0.025 &nbsp;|&nbsp; Top 5 results</div>
+<div class="container">
+  <div class="card">
+    <h2>Scan Parameters</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label>Ticker Symbol</label>
+        <input type="text" id="ticker" value="SPY" placeholder="SPY, QQQ, NVDA..." />
+      </div>
+      <div class="field">
+        <label>Option Type</label>
+        <div class="radio-group">
+          <label id="lbl-call" class="selected"><input type="radio" name="opttype" value="call" checked /> &#x1F4C8; Call</label>
+          <label id="lbl-put"><input type="radio" name="opttype" value="put" /> &#x1F4C9; Put</label>
+        </div>
+      </div>
+      <div class="field">
+        <label>Start Date</label>
+        <input type="date" id="start_date" />
+      </div>
+      <div class="field">
+        <label>End Date</label>
+        <input type="date" id="end_date" />
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>Risk-Free Rate: <span id="rfr-label" style="color:#e94560">4.50%</span></label>
+        <div class="slider-row">
+          <input type="range" id="rfr" min="0" max="10" step="0.25" value="4.5" oninput="document.getElementById('rfr-label').textContent=parseFloat(this.value).toFixed(2)+'%'" />
+        </div>
+      </div>
+    </div>
+    <button class="btn" id="scan-btn" onclick="runScan()">&#9654; RUN SCAN</button>
+    <div id="status"></div>
+  </div>
+  <div id="results-section">
+    <div class="card">
+      <h2>Scan Results</h2>
+      <div class="spot-price" id="spot-info"></div>
+      <div style="overflow-x:auto">
+        <table id="results-table">
+          <thead><tr><th>#</th><th>Expiration</th><th>Strike</th><th>Price</th><th>Delta</th><th>Gamma</th><th>Theta</th><th>Vega</th><th>IV%</th><th>Volume</th></tr></thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  const today = new Date();
+  const fmt = d => d.toISOString().split('T')[0];
+  document.getElementById('start_date').value = fmt(today);
+  const end = new Date(today); end.setDate(end.getDate()+90);
+  document.getElementById('end_date').value = fmt(end);
+  document.querySelectorAll('input[name=opttype]').forEach(r=>{
+    r.addEventListener('change',()=>{
+      document.getElementById('lbl-call').classList.toggle('selected', r.value==='call'&&r.checked);
+      document.getElementById('lbl-put').classList.toggle('selected', r.value==='put'&&r.checked);
+    });
+  });
+  async function runScan(){
+    const btn = document.getElementById('scan-btn');
+    const status = document.getElementById('status');
+    const ticker = document.getElementById('ticker').value.trim().toUpperCase();
+    const start_date = document.getElementById('start_date').value;
+    const end_date = document.getElementById('end_date').value;
+    const option_type = document.querySelector('input[name=opttype]:checked').value;
+    const risk_free_rate = parseFloat(document.getElementById('rfr').value);
+    if(!ticker||!start_date||!end_date){status.className='error';status.textContent='Please fill in all fields.';return;}
+    btn.disabled=true;
+    btn.textContent='&#9696; SCANNING...';
+    status.className='scanning';
+    status.textContent='Scanning '+ticker+' '+option_type+'s from '+start_date+' to '+end_date+'...';
+    document.getElementById('results-section').style.display='none';
+    const t0=Date.now();
+    try{
+      const resp = await fetch('https://options-scanner-api.onrender.com/scan',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ticker,start_date,end_date,option_type,risk_free_rate})
+      });
+      const data = await resp.json();
+      const elapsed=((Date.now()-t0)/1000).toFixed(1);
+      if(data.error){
+        status.className='error';
+        status.innerHTML='&#10060; '+data.error;
+      } else {
+        status.className='success';
+        status.innerHTML='&#9989; Scan complete in '+elapsed+'s &mdash; '+data.results.length+' results found for '+data.ticker;
+        document.getElementById('spot-info').innerHTML='Current spot price: <span>$'+data.spot+'</span>';
+        const tbody=document.getElementById('results-body');
+        tbody.innerHTML='';
+        data.results.forEach((r,i)=>{
+          tbody.innerHTML+=`<tr><td>${i+1}</td><td>${r.expiration}</td><td>$${r.strike}</td><td>$${r.price}</td><td class="highlight">${r.delta}</td><td class="highlight-g">${r.gamma}</td><td>${r.theta}</td><td>${r.vega}</td><td>${r.iv_pct}%</td><td>${r.volume}</td></tr>`;
+        });
+        document.getElementById('results-section').style.display='block';
+      }
+    }catch(e){
+      status.className='error';
+      status.innerHTML='&#10060; Connection error: '+e.message+'. The API may be waking up &mdash; try again in 30 seconds.';
+    }
+    btn.disabled=false;
+    btn.textContent='&#9654; RUN SCAN';
+  }
+</script>
+</body>
+</html>
